@@ -34,7 +34,7 @@ const (
 	KindUnusedIndex      = "unused_index"
 	KindAutoIncHeadroom  = "auto_increment_headroom"
 	SkipUnusedIndexes    = "unused_index_analysis"
-	reasonNoUsageData    = "no index usage data: enable userstat (MariaDB) or performance_schema to get unused-index analysis"
+	reasonNoUsageData    = "no index usage data: enable performance_schema to get unused-index analysis"
 	reasonUptimeTooShort = "server uptime is below the minimum observation window"
 )
 
@@ -142,11 +142,14 @@ type AutoIncrement struct {
 
 // Input is a snapshot of one target.
 type Input struct {
-	Target         string
-	Now            time.Time
-	Indexes        []Index
-	Usage          *Usage // nil when no usage source is available
-	AutoIncrements []AutoIncrement
+	Target  string
+	Now     time.Time
+	Indexes []Index
+	Usage   *Usage // nil when no usage source is available
+	// UsageUnavailable says why Usage is nil (the capability layer's
+	// "enable X to get Y" hint); used as the reason when it is set.
+	UsageUnavailable string
+	AutoIncrements   []AutoIncrement
 }
 
 // Config tunes thresholds. Zero values take the defaults below.

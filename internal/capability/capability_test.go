@@ -162,3 +162,55 @@ func TestReportText(t *testing.T) {
 		}
 	}
 }
+
+func TestDetectIndexUsage(t *testing.T) {
+	base := func(extra fakeQuerier) fakeQuerier {
+		q := fakeQuerier{qVersion: "11.4.2-MariaDB", qComment: "", qSys: "1", qUserstat: "0"}
+		for k, v := range extra {
+			q[k] = v
+		}
+		return q
+	}
+	boom := errors.New("SELECT command denied")
+	tests := []struct {
+		name    string
+		q       fakeQuerier
+		want    State
+		source  string
+		hintHas string
+	}{
+		{"perf schema with instrument and consumer on",
+			base(fakeQuerier{qPerfSchema: "1", qTableIOInstrument: "YES", qGlobalConsumer: "YES"}), Available, "performance_schema", ""},
+		{"perf schema off",
+			base(fakeQuerier{qPerfSchema: "0"}), Unavailable, "", "Enable performance_schema"},
+		{"perf schema off, userstat on: userstat is not enough",
+			base(fakeQuerier{qPerfSchema: "0", qUserstat: "1"}), Unavailable, "", "lists only indexes that were read"},
+		{"instrument disabled",
+			base(fakeQuerier{qPerfSchema: "1", qTableIOInstrument: "NO", qGlobalConsumer: "YES"}), Unavailable, "", "wait/io/table/sql/handler"},
+		{"consumer disabled",
+			base(fakeQuerier{qPerfSchema: "1", qTableIOInstrument: "YES", qGlobalConsumer: "NO"}), Unavailable, "", "global_instrumentation"},
+		{"instrument row missing",
+			base(fakeQuerier{qPerfSchema: "1", qTableIOInstrument: nil, qGlobalConsumer: "YES"}), Unavailable, "", "wait/io/table/sql/handler"},
+		{"instrument probe denied",
+			base(fakeQuerier{qPerfSchema: "1", qTableIOInstrument: boom}), Unavailable, "", "denied"},
+		{"consumer probe denied",
+			base(fakeQuerier{qPerfSchema: "1", qTableIOInstrument: "YES", qGlobalConsumer: boom}), Unavailable, "", "denied"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, err := Detect(context.Background(), tt.q)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if r.IndexUsage.State != tt.want || r.IndexUsageSource != tt.source {
+				t.Fatalf("index usage = %s source %q, want %s %q (hint %q)", r.IndexUsage.State, r.IndexUsageSource, tt.want, tt.source, r.IndexUsage.Hint)
+			}
+			if tt.hintHas != "" && !strings.Contains(r.IndexUsage.Hint, tt.hintHas) {
+				t.Fatalf("hint %q does not contain %q", r.IndexUsage.Hint, tt.hintHas)
+			}
+			if tt.want == Available && r.IndexUsage.Hint != "" {
+				t.Fatalf("available capability has hint %q", r.IndexUsage.Hint)
+			}
+		})
+	}
+}

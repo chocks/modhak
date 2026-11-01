@@ -21,13 +21,13 @@ If you need alerting, long retention, or APM correlation, use a monitoring produ
 
 ## Features
 
-Nothing is implemented yet. All of the following is **planned**; the milestone is in parentheses. Details and sources: [docs/FEATURES.md](docs/FEATURES.md).
+Early development. Rows marked planned are not implemented; the milestone is in parentheses. Details and sources: [docs/FEATURES.md](docs/FEATURES.md).
 
 | Area | Status |
 |---|---|
-| Capability detection (flavor, version, performance_schema, userstat, sys) | planned (M0) |
-| Duplicate / redundant / unused index findings with DDL | planned (M1) |
-| AUTO_INCREMENT headroom | planned (M1) |
+| Capability detection (flavor, version, performance_schema, userstat, sys) | implemented (M0): `modhak capabilities` |
+| Duplicate / redundant / unused index findings with DDL | in progress (M1): advisor and snapshot reader done, CLI next |
+| AUTO_INCREMENT headroom | in progress (M1) |
 | `modhak scan` CLI with JSON output | planned (M1) |
 | Query digests with history and deltas | planned (M2) |
 | Live queries, space growth, health, replication | planned (M3) |

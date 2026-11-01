@@ -63,6 +63,9 @@ func (c *Conn) Close() error { return c.db.Close() }
 
 // Scalar runs a query expected to return one row and one column.
 func (c *Conn) Scalar(ctx context.Context, query string) (sql.NullString, error) {
+	if err := CheckReadOnly(query); err != nil {
+		return sql.NullString{}, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, c.queryTimeout+c.Target.ConnectTimeout)
 	defer cancel()
 	var v sql.NullString

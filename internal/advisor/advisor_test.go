@@ -162,7 +162,7 @@ func TestUnusedIndexes(t *testing.T) {
 		{"below default min uptime: no verdict", usage(2 * day), Config{}, nil, "below the minimum"},
 		{"custom min uptime allows verdict", usage(2 * day), Config{MinUptime: day}, []string{"unused_index:srv:shop:t:idx_zero"}, ""},
 		{"exactly min uptime counts", usage(7 * day), Config{}, []string{"unused_index:srv:shop:t:idx_zero"}, ""},
-		{"no usage data", nil, Config{}, nil, "enable userstat"},
+		{"no usage data", nil, Config{}, nil, "enable performance_schema"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -300,5 +300,12 @@ func TestAnalyzeReportsSkippedWithoutUsage(t *testing.T) {
 	res := Analyze(Input{Target: "srv", Now: now, Indexes: []Index{ix("t", "i", false, "a")}}, Config{})
 	if len(res.Skipped) != 1 || res.Skipped[0].Analysis != SkipUnusedIndexes {
 		t.Fatalf("skipped = %+v", res.Skipped)
+	}
+}
+
+func TestUnusedIndexesSkipReasonFromCapability(t *testing.T) {
+	_, sk := UnusedIndexes(Input{Target: "srv", UsageUnavailable: "Enable the wait/io/table/sql/handler instrument to get unused-index analysis."}, Config{})
+	if sk == nil || sk.Reason != "Enable the wait/io/table/sql/handler instrument to get unused-index analysis." {
+		t.Fatalf("skip = %+v", sk)
 	}
 }
