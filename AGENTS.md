@@ -3,7 +3,7 @@
 Guidance for coding agents working in this repository.
 
 ## Project overview
-modhak is a planned advisor and dashboard for MariaDB (first-class) and MySQL. It snapshots a target database, stores history in SQLite, and produces findings (with evidence and suggested SQL) for a web UI, JSON API, and MCP. Current state: docs plus M0 code (config, target connections, capability detection, `modhak capabilities`); see `docs/ROADMAP.md`. Read `docs/ARCHITECTURE.md`, `docs/FEATURES.md`, and `docs/decisions/` before changing anything.
+modhak is a planned advisor and dashboard for MariaDB (first-class) and MySQL. It snapshots a target database, stores history in SQLite, and produces findings (with evidence and suggested SQL) for a web UI, JSON API, and MCP. Current state: M0 code (config, target connections, capability detection, `modhak capabilities`) and the M1 pure advisor in progress; see `docs/ROADMAP.md`. Read `docs/ARCHITECTURE.md`, `docs/FEATURES.md`, and `docs/decisions/` before changing anything.
 
 ## Layout (planned)
 ```
