@@ -24,7 +24,11 @@ const unusedCaveat = "Observed for %s days since the server started. Counters re
 func UnusedIndexes(in Input, cfg Config) ([]Finding, *Skipped) {
 	cfg = cfg.withDefaults()
 	if in.Usage == nil {
-		return nil, &Skipped{Analysis: SkipUnusedIndexes, Reason: reasonNoUsageData}
+		reason := reasonNoUsageData
+		if in.UsageUnavailable != "" {
+			reason = in.UsageUnavailable
+		}
+		return nil, &Skipped{Analysis: SkipUnusedIndexes, Reason: reason}
 	}
 	if in.Usage.Uptime < cfg.MinUptime {
 		return nil, &Skipped{Analysis: SkipUnusedIndexes,

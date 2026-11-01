@@ -54,6 +54,12 @@ type Report struct {
 	Userstat          Capability `json:"userstat"`
 	Sys               Capability `json:"sys_schema"`
 	Replication       Capability `json:"replication"`
+	// IndexUsage says whether per-index read counters can support unused-index
+	// verdicts. IndexUsageSource names where they come from when Available.
+	// userstat alone does not qualify: it lists only indexes that were read, so
+	// an index absent from it is unknown, not unused.
+	IndexUsage       Capability `json:"index_usage"`
+	IndexUsageSource string     `json:"index_usage_source,omitempty"`
 	// ReplicationStatement is the statement to use for replication status,
 	// e.g. "SHOW REPLICA STATUS". Empty unless Replication is Available.
 	ReplicationStatement string `json:"replication_statement,omitempty"`
@@ -73,6 +79,9 @@ const (
 	qPerfSchema = "SELECT @@performance_schema"
 	qUserstat   = "SELECT @@userstat"
 	qSys        = "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = 'sys'"
+	// Index counters only count while this instrument and consumer are on.
+	qTableIOInstrument = "SELECT enabled FROM performance_schema.setup_instruments WHERE name = 'wait/io/table/sql/handler'"
+	qGlobalConsumer    = "SELECT enabled FROM performance_schema.setup_consumers WHERE name = 'global_instrumentation'"
 )
 
 // Detect probes the target. It returns an error only if the flavor and
@@ -100,6 +109,7 @@ func Detect(ctx context.Context, q Querier) (*Report, error) {
 	r.Userstat = detectUserstat(ctx, q, info)
 	r.Sys = detectSys(ctx, q, info, r.PerformanceSchema)
 	r.Replication, r.ReplicationStatement = replicationStatement(info)
+	r.IndexUsage, r.IndexUsageSource = detectIndexUsage(ctx, q, r.PerformanceSchema, r.Userstat)
 	return r, nil
 }
 
@@ -157,6 +167,31 @@ func detectSys(ctx context.Context, q Querier, info ServerInfo, perf Capability)
 	return Capability{State: Available}
 }
 
+func detectIndexUsage(ctx context.Context, q Querier, perf, userstat Capability) (Capability, string) {
+	if perf.State != Available {
+		hint := "Enable performance_schema (set performance_schema=ON in the server config and restart) to get unused-index analysis."
+		if userstat.State == Available {
+			hint += " userstat alone is not enough: it lists only indexes that were read, so unread indexes cannot be told from unknown ones."
+		}
+		return Capability{Unavailable, hint}, ""
+	}
+	ins, err := q.Scalar(ctx, qTableIOInstrument)
+	if err != nil {
+		return probeFailed("the table I/O instrument", err), ""
+	}
+	if !strings.EqualFold(ins.String, "YES") {
+		return Capability{Unavailable, "Enable the wait/io/table/sql/handler instrument (UPDATE performance_schema.setup_instruments SET ENABLED='YES' WHERE NAME='wait/io/table/sql/handler') to get unused-index analysis; with it off every index reads zero."}, ""
+	}
+	con, err := q.Scalar(ctx, qGlobalConsumer)
+	if err != nil {
+		return probeFailed("the global_instrumentation consumer", err), ""
+	}
+	if !strings.EqualFold(con.String, "YES") {
+		return Capability{Unavailable, "Enable the global_instrumentation consumer (UPDATE performance_schema.setup_consumers SET ENABLED='YES' WHERE NAME='global_instrumentation') to get unused-index analysis; with it off every index reads zero."}, ""
+	}
+	return Capability{State: Available}, "performance_schema"
+}
+
 // replicationStatement chooses the status statement from flavor and version:
 // MariaDB accepts SHOW REPLICA STATUS from 10.5.1, MySQL 8.4 rejects SHOW
 // SLAVE STATUS (FEATURES.md V4, V5). The MySQL release that introduced the
@@ -193,6 +228,10 @@ func (r *Report) Text() string {
 	line("userstat", r.Userstat)
 	line("sys schema", r.Sys)
 	line("replication", r.Replication)
+	line("index usage", r.IndexUsage)
+	if r.IndexUsageSource != "" {
+		fmt.Fprintf(&b, "%-19s   source: %s\n", "", r.IndexUsageSource)
+	}
 	if r.ReplicationStatement != "" {
 		fmt.Fprintf(&b, "%-19s   statement: %s\n", "", r.ReplicationStatement)
 	}
