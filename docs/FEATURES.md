@@ -42,11 +42,11 @@ Every catalog table, variable, or statement below carries a source link or the m
 
 Rules: a feature declares which capabilities it needs; the layer returns `Available`, `Degraded(reason)`, or `Unavailable(enable_hint)`; features never run a catalog query without asking first.
 
-## 3. PgHero mapping
+## 3. Feature map
 
-Columns: PgHero feature | modhak equivalent | source catalogs/queries | MariaDB vs MySQL notes | milestone. Source markers apply to each catalog named.
+Columns: Feature | modhak equivalent | source catalogs/queries | MariaDB vs MySQL notes | milestone. Source markers apply to each catalog named.
 
-| PgHero feature | modhak equivalent | Source catalogs / queries | MariaDB vs MySQL notes | Milestone |
+| Feature | modhak equivalent | Source catalogs / queries | MariaDB vs MySQL notes | Milestone |
 |---|---|---|---|---|
 | Queries / slow queries | Queries page: per-digest totals, deltas between snapshots, top by total time | `performance_schema.events_statements_summary_by_digest` ([V6](#1-verified-facts-used-by-this-document)). Columns `SUM_ROWS_EXAMINED`, `SUM_NO_INDEX_USED`, `SUM_ROWS_SENT`, `QUERY_SAMPLE_TEXT`: UNVERIFIED. Snapshot, then diff. If a digest's `COUNT_STAR` drops versus the previous snapshot, treat it as a new baseline (counter reset, restart, `TRUNCATE`, or digest eviction); never emit a negative delta. | MariaDB column set UNVERIFIED. Overflow row has NULL schema and digest ([V6](#1-verified-facts-used-by-this-document)): store or skip it explicitly. | M2 |
 | Live queries + kill | Live page; `KILL QUERY` button | `information_schema.PROCESSLIST` and/or `performance_schema.threads` (both UNVERIFIED); `KILL QUERY <id>` (UNVERIFIED) | Opt-in via config and `operator` role; every kill goes to `audit_log` (ADR 0006, 0007). Needed privilege UNVERIFIED. | M3 (kill: M4, needs auth) |
@@ -61,7 +61,7 @@ Columns: PgHero feature | modhak equivalent | source catalogs/queries | MariaDB 
 | Multiple databases | Target list | Config file (ADR 0008) | n/a | M0 |
 | Vacuum / transaction wraparound | Long transactions and InnoDB history list length | `information_schema.INNODB_TRX` (`trx_started`), history list length from `SHOW ENGINE INNODB STATUS` or `information_schema.INNODB_METRICS` (`trx_rseg_history_len`); all UNVERIFIED | Metric name and enablement per flavor UNVERIFIED. | M3 |
 | Sequence overflow | Finding `auto_increment_headroom` with days-to-overflow | `information_schema.columns` (`COLUMN_TYPE`, `EXTRA` containing `auto_increment`) and `information_schema.tables.AUTO_INCREMENT`; type max values below. All UNVERIFIED as documented. | See AUTO_INCREMENT note after the table. | M1 |
-| Invalid indexes | Finding for ignored-but-present and unused-but-present indexes | `information_schema.statistics` (`IS_VISIBLE` in MySQL 8.0, `IGNORED` in MariaDB 10.6): both UNVERIFIED | Maps loosely; PgHero's "invalid" has no direct InnoDB analog. | M1 (best effort) |
+| Invalid indexes | Finding for ignored-but-present and unused-but-present indexes | `information_schema.statistics` (`IS_VISIBLE` in MySQL 8.0, `IGNORED` in MariaDB 10.6): both UNVERIFIED | Maps loosely; Postgres-style "invalid" indexes have no direct InnoDB analog. | M1 (best effort) |
 | JSON API and MCP | Same findings as structured data | `internal/advisor` output (ARCHITECTURE.md) | n/a | M1 (CLI JSON), M4 (API, MCP) |
 | Before/after EXPLAIN verification | Compare plans before and after a suggested index, in a non-prod setting | See Explain | Applying the DDL is the user's job; modhak never executes DDL (ADR 0007). | M5 |
 | Schema lint | Missing PKs, mixed collations, oversized VARCHAR indexes | `information_schema.tables`, `columns`, `statistics` (`COLLATION_NAME`, `CHARACTER_MAXIMUM_LENGTH`; UNVERIFIED) | Index key length limits per flavor and row format: UNVERIFIED. | M5 |

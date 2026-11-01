@@ -3,7 +3,7 @@
 Status: accepted
 
 ## Context
-Users run several databases (primary, replicas, different environments) and want one modhak for all of them, like PgHero's multiple databases.
+Users run several databases (primary, replicas, different environments) and want one modhak for all of them.
 
 ## Decision
 Targets are declared in a config file (YAML). Each target has a name, connection settings, and optional per-target feature settings. Capabilities, collection, and findings are tracked per target.

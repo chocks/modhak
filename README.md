@@ -1,6 +1,6 @@
 # modhak
 
-A PgHero-style advisor and dashboard for MariaDB (first-class) and MySQL (supported).
+An index and schema advisor with a dashboard for MariaDB (first-class) and MySQL (supported). Inspired by [PgHero](https://github.com/ankane/pghero).
 
 > **Status: planning.** No code exists yet. Everything below describes the intended design. Sections marked *planned* or *not yet implemented* are not available.
 
@@ -8,7 +8,7 @@ A PgHero-style advisor and dashboard for MariaDB (first-class) and MySQL (suppor
 
 ## Why
 
-PgHero shows Postgres users what to fix: duplicate and unused indexes, missing indexes, sequence headroom. MariaDB and MySQL have no equally simple, free, self-hosted equivalent. modhak collects snapshots from a target database, keeps history in SQLite, and produces actionable findings (with evidence and suggested SQL) in a web UI, a JSON API, and MCP so AI agents can act on them.
+MariaDB and MySQL lack a simple, free, self-hosted tool that tells you what to fix: duplicate and unused indexes, missing indexes, AUTO_INCREMENT headroom. modhak collects snapshots from a target database, keeps history in SQLite, and produces actionable findings (with evidence and suggested SQL) in a web UI, a JSON API, and MCP so AI agents can act on them.
 
 ## Positioning vs Datadog DBM
 
