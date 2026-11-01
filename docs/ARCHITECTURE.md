@@ -1,6 +1,6 @@
 # Architecture
 
-Status: design. No code exists yet. Catalog details are in [FEATURES.md](FEATURES.md); decisions are in [decisions/](decisions/).
+Status: design. Code so far: M0 (config, target connections, capability detection). Catalog details are in [FEATURES.md](FEATURES.md); decisions are in [decisions/](decisions/).
 
 ## Data flow
 
@@ -44,6 +44,8 @@ Status: design. No code exists yet. Catalog details are in [FEATURES.md](FEATURE
 | Package | Responsibility | Must not |
 |---|---|---|
 | `cmd/modhak` | Entry point, flags, subcommands (`serve`, `scan`), wiring | Hold business logic |
+| `internal/config` | Load and validate the YAML config (targets, timeouts, secrets references) | Open connections |
+| `internal/target` | Per-target connection pool: read-only session, timeouts, error messages; runs capability detection per target in isolation | Hold analysis logic |
 | `internal/capability` | Detect flavor, version, `performance_schema`, `userstat`, `sys`, replication statement; return `Available` / `Degraded` / `Unavailable(hint)` | Run feature queries |
 | `internal/collector` | Per-target scheduled collection; reads catalogs after asking capability; computes deltas; writes to store | Judge or format findings |
 | `internal/store` | SQLite access (ADR 0002), migrations, retention, audit log | Contain advisory logic |

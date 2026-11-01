@@ -36,7 +36,13 @@ Nothing is implemented yet. All of the following is **planned**; the milestone i
 
 ## Quick start
 
-**Not yet implemented.** Intended shape:
+Implemented so far (M0): `modhak capabilities`. Rest is intended shape:
+
+```sh
+modhak capabilities --config configs/modhak.local.yaml [--target NAME] [--json]
+```
+
+Planned:
 
 ```sh
 modhak scan --config modhak.yaml          # one-shot findings, text or JSON
@@ -105,6 +111,8 @@ make check                   # gofmt, vet, tests
 make build                   # bin/modhak
 docker compose --profile bare up -d --wait     # servers with performance_schema off (:33063, :33064)
 docker compose --profile matrix up -d --wait   # MariaDB 10.6 (:33065), MySQL 8.0 (:33066)
+make run ARGS="capabilities --config configs/modhak.local.yaml"
+MODHAK_TEST_ADDR=127.0.0.1:33061 go test ./internal/target -v   # live-server test, skipped otherwise
 make down                    # stop everything; `make reset` also drops data
 ```
 
