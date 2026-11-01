@@ -1,0 +1,24 @@
+# modhak config: databases to watch (ADR 0008). Copy to a *.local.yaml file
+# (git-ignored) and edit. Matches the ports published by docker-compose.yml.
+targets:
+  - name: mariadb
+    host: 127.0.0.1
+    port: 33061
+    user: modhak
+    password: modhak          # or: password_env: MODHAK_MARIADB_PASSWORD
+    # tls: preferred          # false | true | skip-verify | preferred
+    # connect_timeout: 5s
+    # query_timeout: 10s
+
+  - name: mysql
+    host: 127.0.0.1
+    port: 33062
+    user: modhak
+    password: modhak
+
+  # Optional (docker compose --profile bare up -d)
+  # - {name: mariadb-bare, host: 127.0.0.1, port: 33063, user: modhak, password: modhak}
+  # - {name: mysql-bare,   host: 127.0.0.1, port: 33064, user: modhak, password: modhak}
+  # Optional (docker compose --profile matrix up -d)
+  # - {name: mariadb-10-6, host: 127.0.0.1, port: 33065, user: modhak, password: modhak}
+  # - {name: mysql-8-0,    host: 127.0.0.1, port: 33066, user: modhak, password: modhak}

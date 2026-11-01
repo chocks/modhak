@@ -1,0 +1,4 @@
+# Used by the `app` compose profile: targets addressed by service name.
+targets:
+  - {name: mariadb, host: mariadb, user: modhak, password: modhak}
+  - {name: mysql,   host: mysql,   user: modhak, password: modhak}

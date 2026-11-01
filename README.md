@@ -82,13 +82,33 @@ auth:
   enabled: false            # off by default
 targets:
   - name: prod-replica-1
-    dsn: modhak:${MODHAK_PASSWORD}@tcp(db1.internal:3306)/
-    flavor: auto            # auto | mariadb | mysql
+    host: db1.internal
+    port: 3306              # default
+    user: modhak
+    password_env: MODHAK_PASSWORD   # or `password:`; set only one
+    tls: preferred          # false | true | skip-verify | preferred
   - name: staging
-    dsn: modhak:${MODHAK_PASSWORD}@tcp(staging-db:3306)/
+    host: staging-db
+    user: modhak
+    password_env: MODHAK_PASSWORD
 features:
   kill_query: false         # opt-in; needs operator role and a privileged user
 ```
+
+## Local development
+
+Needs Go (1.27 is pinned in `go.mod`; an older local `go` fetches it automatically) and Docker with Compose.
+
+```sh
+make up                      # MariaDB 11.4 (:33061) and MySQL 8.4 (:33062), read-only `modhak` user
+make check                   # gofmt, vet, tests
+make build                   # bin/modhak
+docker compose --profile bare up -d --wait     # servers with performance_schema off (:33063, :33064)
+docker compose --profile matrix up -d --wait   # MariaDB 10.6 (:33065), MySQL 8.0 (:33066)
+make down                    # stop everything; `make reset` also drops data
+```
+
+`make up` copies `configs/modhak.example.yaml` to the git-ignored `configs/modhak.local.yaml`. Dev credentials (`modhak`/`modhak`, root `root`) are for local containers only.
 
 ## Roadmap
 
