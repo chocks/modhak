@@ -21,7 +21,7 @@ Status: design. Code so far: M0 (config, target connections, capability detectio
    │ userstat,sys  │                       │ snapshots
    └───────────────┘                       ▼
                                    ┌───────────────┐
-                                   │ store (SQLite)│  history, audit_log
+                                   │store(Postgres)│  history, audit_log
                                    └───────┬───────┘
                                            │ inputs (plain structs)
                                            ▼
@@ -48,7 +48,7 @@ Status: design. Code so far: M0 (config, target connections, capability detectio
 | `internal/target` | Per-target connection pool: read-only session, timeouts, error messages; runs capability detection per target in isolation | Hold analysis logic |
 | `internal/capability` | Detect flavor, version, `performance_schema`, `userstat`, `sys`, replication statement; return `Available` / `Degraded` / `Unavailable(hint)` | Run feature queries |
 | `internal/collector` | Per-target scheduled collection; reads catalogs after asking capability; computes deltas; writes to store | Judge or format findings |
-| `internal/store` | SQLite access (ADR 0002), migrations, retention, audit log | Contain advisory logic |
+| `internal/store` | Postgres access (ADR 0009), migrations, retention, audit log | Contain advisory logic |
 | `internal/advisor` | Pure functions: inputs in, `[]Finding` out | Import `net/http`, `database/sql`, or the store; read clocks or env directly (pass time in) |
 | `internal/web` | Routes, templates, htmx partials, embedded static | Re-implement analysis |
 | `internal/auth` | `Principal`, roles, OIDC, API tokens, CSRF, audit helpers | Know about pages |
@@ -109,7 +109,7 @@ Charts
 
 ## Store schema sketch
 
-SQLite; illustrative columns, refine in M2. Times are UTC unix seconds. All history tables carry `target_id`.
+PostgreSQL (ADR 0009); illustrative columns, refine in M2. Times are `timestamptz` (UTC). All history tables carry `target_id`.
 
 | Table | Core columns | Notes |
 |---|---|---|

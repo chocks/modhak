@@ -37,7 +37,7 @@ Exit criteria
 ## M2: Collector, store, delta logic, queries page
 
 Scope
-- `internal/collector` on an interval, writing to SQLite via `internal/store`.
+- `internal/collector` on an interval, writing to Postgres via `internal/store` (ADR 0009). docker compose gets a Postgres service.
 - Digest snapshots with row cap and text normalization; `digest_text` deduplicated.
 - Delta computation with counter-reset handling (a count drop is a new baseline).
 - Queries page with top-N and time range; uPlot charts.

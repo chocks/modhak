@@ -1,6 +1,6 @@
 # 0002: SQLite history store via modernc.org/sqlite
 
-Status: accepted
+Status: superseded by [0009](0009-postgres-history-store.md)
 
 ## Context
 modhak keeps snapshots (digests, index usage, space, health) and an audit log. It must not require another server, and it must stay a CGO-free static binary.
