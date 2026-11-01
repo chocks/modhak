@@ -1,6 +1,6 @@
 # Features and capability matrix
 
-Status: planning. Nothing here is implemented.
+Status: planning. Only capability detection (M0) is implemented; V10 records what it verified.
 
 ## How to read the verification marks
 
@@ -23,6 +23,7 @@ Every catalog table, variable, or statement below carries a source link or the m
 | V7 | `performance_schema.table_io_waits_summary_by_index_usage` exists in MySQL and in MariaDB. Grouped by (`OBJECT_TYPE`, `OBJECT_SCHEMA`, `OBJECT_NAME`, `INDEX_NAME`). `INDEX_NAME` is NULL when no index was used (inserts counted here) and `PRIMARY` for the primary key. `COUNT_STAR` is the event count. `TRUNCATE` resets counters; DDL that changes a table's indexes may reset per-index statistics. | Confirmed by search snippets | [MariaDB KB](https://mariadb.com/kb/en/3991/), [MySQL: table wait summary tables](https://dev.mysql.com/doc/refman/en/performance-schema-table-wait-summary-tables.html) |
 | V8 | MySQL 8.0 has `performance_schema.data_locks` and `data_lock_waits`. `INFORMATION_SCHEMA.INNODB_LOCKS` and `INNODB_LOCK_WAITS` were removed in 8.0.1. `data_locks` needs `SELECT` on the table (the old table needed `PROCESS`). | Confirmed by search snippets | [MySQL 8.0: data_locks](https://dev.mysql.com/doc/refman/8.0/en/performance-schema-data-locks-table.html) |
 | V9 | MySQL `EXPLAIN ANALYZE` always uses TREE output. An updated JSON explain format (selected by `explain_json_format_version`) is described as introduced in 8.3 and able to show `EXPLAIN ANALYZE` output. | Confirmed by search snippets of a MySQL blog and 9.7 manual; exact 8.3 claim needs a re-read | [MySQL: EXPLAIN](https://dev.mysql.com/doc/en/explain.html), [MySQL blog: new JSON format](https://dev.mysql.com/blog-archive/new-json-format-for-explain/) |
+| V10 | Run against live servers during M0 (MariaDB 10.11.14 and MySQL 8.0.46, Ubuntu packages, 2026-11-01), as a user holding only `SELECT, PROCESS ON *.*`: `SELECT VERSION()`, `SELECT @@version_comment`, `SELECT @@performance_schema`, and the `information_schema.schemata` lookup for `sys` all work. `@@userstat` works on MariaDB 10.11.14 (0 by default, 1 with `--userstat=1`). `@@performance_schema` was 0 on the MariaDB package default and 1 on the MySQL default; it reads 0 on MySQL started with `--performance-schema=OFF`. The `sys` schema exists on both. `SET SESSION TRANSACTION READ ONLY` is accepted and the session reports read-only. MariaDB 10.11 reports `VERSION()` without a `5.5.5-` prefix. | Tested on a running server (`go test ./internal/target` with `MODHAK_TEST_ADDR`; `modhak capabilities`) | not applicable (local run); not yet run on MariaDB 11.x, MySQL 8.4, or forks |
 
 ## 2. Capability matrix (what the capability layer detects)
 
@@ -95,7 +96,7 @@ Test each against a real MariaDB instance (note the version), and a MySQL instan
 
 - [ ] MariaDB: `events_statements_summary_by_digest` exists, its full column list, and whether `QUERY_SAMPLE_TEXT`, `SUM_ROWS_EXAMINED`, `SUM_NO_INDEX_USED`, `SUM_ROWS_SENT` exist.
 - [ ] MySQL: `SUM_ROWS_EXAMINED`, `SUM_NO_INDEX_USED`, `SUM_ROWS_SENT`, `QUERY_SAMPLE_TEXT` exist in the target versions.
-- [ ] `performance_schema` default value on MariaDB and MySQL; `@@performance_schema` probe works; which consumers and instruments are needed for digests and index I/O.
+- [ ] `performance_schema` default value on MariaDB and MySQL (V10: MariaDB 10.11.14 package off, MySQL 8.0.46 on; other versions and official images remain); `@@performance_schema` probe works (V10: yes on both); which consumers and instruments are needed for digests and index I/O.
 - [ ] `table_io_waits_summary_by_index_usage` column names beyond those in V7 (`COUNT_READ`, `COUNT_WRITE`, ...), and which instrument enables it by default on each flavor.
 - [ ] MariaDB `INDEX_STATISTICS`: `QUERIES` column present or not, and from which version; privilege needed to read it; `FLUSH INDEX_STATISTICS` behavior.
 - [ ] Whether `userstat` exists on MySQL (assumed: no).
@@ -120,4 +121,4 @@ Test each against a real MariaDB instance (note the version), and a MySQL instan
 - [ ] Buffer pool counters `Innodb_buffer_pool_reads` / `Innodb_buffer_pool_read_requests` on both flavors.
 - [ ] `max_connections` and per-user connection views on both flavors.
 - [ ] Every row in the "Minimal GRANTs" table, with a user holding only that grant.
-- [ ] `SELECT VERSION()` / `@@version_comment` flavor detection on MariaDB, MySQL, and common forks (Percona, Aurora, RDS, Cloud SQL): TBD whether forks need special handling.
+- [ ] `SELECT VERSION()` / `@@version_comment` flavor detection on MariaDB, MySQL, and common forks (V10: MariaDB 10.11.14 and MySQL 8.0.46 done; forks remain) (Percona, Aurora, RDS, Cloud SQL): TBD whether forks need special handling.
