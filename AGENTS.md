@@ -32,4 +32,4 @@ docs/                  architecture, features, roadmap, risks, decisions (ADRs)
 - Keep docs concise; mark uncertainty as TBD or Open question.
 
 ## Do not (this phase)
-Do not add Go code, `go.mod`, or CI config until a milestone asks for it.
+Do not add Go code beyond the current milestone's scope until a milestone asks for it. CI lives in `.github/workflows/ci.yml`.

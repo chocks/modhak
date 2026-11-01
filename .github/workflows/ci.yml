@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: make fmt
+      - name: vet
+        run: make vet
+      - name: test
+        run: make test
+      - name: build
+        run: make build
+
+  # Starts the docker compose dev databases (which also checks the compose
+  # file, init scripts and healthchecks) and runs the live-server tests
+  # against each flavor. Tests skip themselves when MODHAK_TEST_ADDR is unset.
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: start databases
+        run: docker compose up -d --wait mariadb mysql
+      - name: test against MariaDB
+        run: MODHAK_TEST_ADDR=127.0.0.1:33061 go test -count=1 -v ./internal/...
+      - name: test against MySQL
+        run: MODHAK_TEST_ADDR=127.0.0.1:33062 go test -count=1 -v ./internal/...
+      - name: logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: stop databases
+        if: always()
+        run: docker compose down -v
