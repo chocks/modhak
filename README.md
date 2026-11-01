@@ -26,9 +26,9 @@ Early development. Rows marked planned are not implemented; the milestone is in 
 | Area | Status |
 |---|---|
 | Capability detection (flavor, version, performance_schema, userstat, sys) | implemented (M0): `modhak capabilities` |
-| Duplicate / redundant / unused index findings with DDL | in progress (M1): advisor and snapshot reader done, CLI next |
-| AUTO_INCREMENT headroom | in progress (M1) |
-| `modhak scan` CLI with JSON output | planned (M1) |
+| Duplicate / redundant / unused index findings with DDL | CLI done (M1): `modhak scan`; findings page next |
+| AUTO_INCREMENT headroom | CLI done (M1): `modhak scan` |
+| `modhak scan` CLI with JSON output | implemented (M1) |
 | Query digests with history and deltas | planned (M2) |
 | Live queries, space growth, health, replication | planned (M3) |
 | Auth (OIDC, API tokens), JSON API, MCP, opt-in kill | planned (M4) |
@@ -36,16 +36,18 @@ Early development. Rows marked planned are not implemented; the milestone is in 
 
 ## Quick start
 
-Implemented so far (M0): `modhak capabilities`. Rest is intended shape:
+Implemented so far:
 
 ```sh
 modhak capabilities --config configs/modhak.local.yaml [--target NAME] [--json]
+modhak scan --config configs/modhak.local.yaml [--target NAME] [--json] [--min-uptime 168h]
 ```
+
+`scan` prints duplicate, redundant and unused index findings and AUTO_INCREMENT headroom for each target, with evidence and suggested SQL that modhak never runs. It exits 1 if any target could not be scanned and 0 otherwise, even when it finds problems. Unused-index verdicts need `performance_schema` (userstat alone is not enough) and a server uptime of at least `--min-uptime` (default 7 days; `0` turns the minimum off); otherwise `scan` says why it skipped them.
 
 Planned:
 
 ```sh
-modhak scan --config modhak.yaml          # one-shot findings, text or JSON
 modhak serve --config modhak.yaml         # web UI + collector
 ```
 

@@ -158,10 +158,10 @@ func TestUnusedIndexes(t *testing.T) {
 		wantIDs     []string
 		wantSkipped string
 	}{
-		{"zero reads past min uptime", usage(30 * day), Config{}, []string{"unused_index:srv:shop:t:idx_zero"}, ""},
+		{"zero reads past min uptime", usage(30 * day), Config{}, []string{"unused_index:srv:shop:t:idx_zero"}, "1 index has no usage counters"},
 		{"below default min uptime: no verdict", usage(2 * day), Config{}, nil, "below the minimum"},
-		{"custom min uptime allows verdict", usage(2 * day), Config{MinUptime: day}, []string{"unused_index:srv:shop:t:idx_zero"}, ""},
-		{"exactly min uptime counts", usage(7 * day), Config{}, []string{"unused_index:srv:shop:t:idx_zero"}, ""},
+		{"custom min uptime allows verdict", usage(2 * day), Config{MinUptime: day}, []string{"unused_index:srv:shop:t:idx_zero"}, "no usage counters"},
+		{"exactly min uptime counts", usage(7 * day), Config{}, []string{"unused_index:srv:shop:t:idx_zero"}, "no usage counters"},
 		{"no usage data", nil, Config{}, nil, "enable performance_schema"},
 	}
 	for _, tt := range tests {
@@ -307,5 +307,47 @@ func TestUnusedIndexesSkipReasonFromCapability(t *testing.T) {
 	_, sk := UnusedIndexes(Input{Target: "srv", UsageUnavailable: "Enable the wait/io/table/sql/handler instrument to get unused-index analysis."}, Config{})
 	if sk == nil || sk.Reason != "Enable the wait/io/table/sql/handler instrument to get unused-index analysis." {
 		t.Fatalf("skip = %+v", sk)
+	}
+}
+
+func TestUnusedIndexesNoteForIndexesWithoutCounters(t *testing.T) {
+	usageFor := func(entries ...IndexUsage) *Usage {
+		return &Usage{Source: SourcePerfSchema, Uptime: 30 * 24 * time.Hour, Entries: entries}
+	}
+	tests := []struct {
+		name     string
+		indexes  []Index
+		usage    *Usage
+		wantIDs  []string
+		wantNote string // substring; empty means no note
+	}{
+		{"all indexes have counters: no note",
+			[]Index{ix("t", "a", false, "a"), ix("t", "b", false, "b")},
+			usageFor(IndexUsage{"shop", "t", "a", 0}, IndexUsage{"shop", "t", "b", 4}),
+			[]string{"unused_index:srv:shop:t:a"}, ""},
+		{"no counters at all: no verdict, one note",
+			[]Index{ix("t", "a", false, "a"), ix("t", "b", false, "b")},
+			usageFor(),
+			nil, "2 indexes have no usage counters yet"},
+		{"unique, primary and ignored indexes are not counted as unknown",
+			[]Index{ix("t", "PRIMARY", true, "id"), ix("t", "uq", true, "u")},
+			usageFor(), nil, ""},
+		{"single index uses singular wording",
+			[]Index{ix("t", "a", false, "a")}, usageFor(), nil, "1 index has no usage counters yet (the table has not been accessed since the server started), so no verdict is given for it"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fs, sk := UnusedIndexes(Input{Target: "srv", Indexes: tt.indexes, Usage: tt.usage}, Config{})
+			if got := ids(fs); len(got)+len(tt.wantIDs) > 0 && !reflect.DeepEqual(got, tt.wantIDs) {
+				t.Fatalf("ids = %v, want %v", got, tt.wantIDs)
+			}
+			if tt.wantNote == "" {
+				if sk != nil {
+					t.Fatalf("unexpected note %+v", sk)
+				}
+			} else if sk == nil || !strings.Contains(sk.Reason, tt.wantNote) {
+				t.Fatalf("note = %+v, want containing %q", sk, tt.wantNote)
+			}
+		})
 	}
 }

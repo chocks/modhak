@@ -46,6 +46,7 @@ Status: design. Code so far: M0 (config, target connections, capability detectio
 | `cmd/modhak` | Entry point, flags, subcommands (`serve`, `scan`), wiring | Hold business logic |
 | `internal/config` | Load and validate the YAML config (targets, timeouts, secrets references) | Open connections |
 | `internal/target` | Per-target connection pool: read-only session, timeouts, error messages; runs capability detection per target in isolation | Hold analysis logic |
+| `internal/scan` | One-shot pipeline for `modhak scan`: capability, snapshot, advisor, text/JSON rendering, per target in isolation | Hold analysis logic or queries |
 | `internal/capability` | Detect flavor, version, `performance_schema`, `userstat`, `sys`, replication statement; return `Available` / `Degraded` / `Unavailable(hint)` | Run feature queries |
 | `internal/collector` | Per-target scheduled collection; reads catalogs after asking capability; computes deltas; writes to store | Judge or format findings |
 | `internal/store` | SQLite access (ADR 0002), migrations, retention, audit log | Contain advisory logic |

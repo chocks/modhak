@@ -80,8 +80,10 @@ func TestLiveSnapshotAndAnalyze(t *testing.T) {
 		}
 		// With a tiny minimum the same data yields unused-index findings.
 		loose := advisor.Analyze(in, advisor.Config{MinUptime: time.Second})
-		if len(loose.Skipped) != 0 {
-			t.Errorf("unexpected skip: %+v", loose.Skipped)
+		for _, sk := range loose.Skipped {
+			if strings.Contains(sk.Reason, "minimum") {
+				t.Errorf("unexpected uptime skip: %+v", sk)
+			}
 		}
 		for _, f := range loose.Findings {
 			if f.Kind == advisor.KindUnusedIndex && f.Target.Index == "PRIMARY" {
