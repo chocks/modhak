@@ -137,7 +137,7 @@ Also (TBD): `schema_migrations`, `api_tokens` (hashed), and `capability_snapshot
 2. Which parser: Vitess or TiDB? Evaluate MariaDB-syntax coverage, binary size, and API stability before M5.
 3. MCP transport (stdio, streamable HTTP, both) and which SDK. TBD.
 4. Default behavior when auth is off: which role does the implicit Principal have, and is kill allowed if enabled in config?
-5. Minimum uptime default for unused-index verdicts.
+5. Minimum uptime default for unused-index verdicts. M1 uses 7 days, configurable (`advisor.Config.MinUptime`); revisit with real data.
 6. Supported version matrix (lowest MariaDB and MySQL versions). TBD until the FEATURES.md checklist is run.
 7. Whether `modhak scan` should be able to write to the store, or stay stateless.
 8. Is the `targets` table needed or does config alone identify targets (renames break history)?
