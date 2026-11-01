@@ -1,0 +1,94 @@
+# Local dev databases for modhak. See "Local development" in README.md.
+#
+#   docker compose up -d --wait            # mariadb + mysql, performance_schema on
+#   docker compose --profile bare up -d --wait    # + servers with it off
+#   docker compose --profile matrix up -d --wait  # + older versions
+#   docker compose --profile app up --build       # + modhak itself, in a container
+#
+# Every server gets a read-only `modhak` user (password `modhak`); root
+# password is `root`. These credentials are for local dev only.
+
+x-healthcheck-mariadb: &hc-mariadb
+  test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+  interval: 5s
+  timeout: 5s
+  retries: 20
+  start_period: 10s
+
+x-healthcheck-mysql: &hc-mysql
+  test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+  interval: 5s
+  timeout: 5s
+  retries: 20
+  start_period: 20s
+
+x-mariadb: &mariadb
+  environment:
+    MARIADB_ROOT_PASSWORD: root
+  volumes:
+    - ./docker/mariadb/init.sql:/docker-entrypoint-initdb.d/10-modhak.sql:ro
+    - ./docker/seed.sql:/docker-entrypoint-initdb.d/20-seed.sql:ro
+  healthcheck: *hc-mariadb
+
+x-mysql: &mysql
+  environment:
+    MYSQL_ROOT_PASSWORD: root
+  volumes:
+    - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/10-modhak.sql:ro
+    - ./docker/seed.sql:/docker-entrypoint-initdb.d/20-seed.sql:ro
+  healthcheck: *hc-mysql
+
+services:
+  # Richest MariaDB: performance_schema and userstat on.
+  mariadb:
+    <<: *mariadb
+    image: mariadb:11.4
+    command: ["--performance-schema=ON", "--userstat=1"]
+    ports: ["33061:3306"]
+
+  # MySQL with defaults (performance_schema on).
+  mysql:
+    <<: *mysql
+    image: mysql:8.4
+    ports: ["33062:3306"]
+
+  # MariaDB with defaults: performance_schema is expected to be off, so the
+  # capability layer should report Unavailable with a hint.
+  mariadb-bare:
+    <<: *mariadb
+    image: mariadb:11.4
+    profiles: [bare]
+    ports: ["33063:3306"]
+
+  mysql-bare:
+    <<: *mysql
+    image: mysql:8.4
+    command: ["--performance-schema=OFF"]
+    profiles: [bare]
+    ports: ["33064:3306"]
+
+  # Older versions, for SHOW SLAVE/REPLICA STATUS and sys-schema cutoffs.
+  mariadb-10-6:
+    <<: *mariadb
+    image: mariadb:10.6
+    command: ["--performance-schema=ON", "--userstat=1"]
+    profiles: [matrix]
+    ports: ["33065:3306"]
+
+  mysql-8-0:
+    <<: *mysql
+    image: mysql:8.0
+    profiles: [matrix]
+    ports: ["33066:3306"]
+
+  # modhak itself, for testing the container image. Day to day, `make run`
+  # on the host against the published ports is faster.
+  modhak:
+    build: .
+    profiles: [app]
+    command: ["capabilities", "--config", "/etc/modhak/compose.yaml"]
+    volumes:
+      - ./configs/compose.yaml:/etc/modhak/compose.yaml:ro
+    depends_on:
+      mariadb: {condition: service_healthy}
+      mysql: {condition: service_healthy}

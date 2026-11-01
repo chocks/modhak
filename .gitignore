@@ -31,3 +31,10 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# modhak
+/bin/
+/modhak
+*.db
+*.db-journal
+/configs/*.local.yaml
