@@ -1,6 +1,6 @@
 # Architecture
 
-Status: design. Code so far: M0 (config, target connections, capability detection). Catalog details are in [FEATURES.md](FEATURES.md); decisions are in [decisions/](decisions/).
+Status: M0 and M1 are implemented (config, target connections, capability detection, advisor, one-shot snapshot, `scan`, findings page); the store, scheduled collector, auth, API and MCP are design only. Catalog details are in [FEATURES.md](FEATURES.md); decisions are in [decisions/](decisions/).
 
 ## Data flow
 

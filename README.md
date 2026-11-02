@@ -125,7 +125,7 @@ CI (`.github/workflows/ci.yml`) runs gofmt, vet, tests and build, then the live-
 
 ## Roadmap
 
-M0 capability detection and connections (done); M1 index hygiene and AUTO_INCREMENT headroom with `modhak scan` (CLI done, findings page next); M2 collector, Postgres store, queries page; M3 live queries, space, health, replication; M4 auth, API tokens, JSON API, MCP; M5 suggested indexes, explain verification, schema lint. Later: Datadog events export, OIDC polish, standalone collector agent. Scope and exit criteria: [docs/ROADMAP.md](docs/ROADMAP.md).
+M0 capability detection and connections (done); M1 index hygiene and AUTO_INCREMENT headroom with `modhak scan` and a findings page (done); M2 collector, Postgres store, queries page; M3 live queries, space, health, replication; M4 auth, API tokens, JSON API, MCP; M5 suggested indexes, explain verification, schema lint. Later: Datadog events export, OIDC polish, standalone collector agent. Scope and exit criteria: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Docs
 

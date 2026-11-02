@@ -1,6 +1,6 @@
 # Features and capability matrix
 
-Status: planning. Capability detection (M0) and the pure advisor (M1) are implemented; V10 and V11 record what was verified.
+Status: M0 and M1 are implemented; V10 to V12 record what was verified against real servers. Features for M2 and later are still planning.
 
 ## How to read the verification marks
 
