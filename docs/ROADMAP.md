@@ -1,8 +1,10 @@
 # Roadmap
 
-Planning only. No milestone has started. Catalog and version claims are subject to the checklist in [FEATURES.md](FEATURES.md#unverified-checklist).
+M0 and M1 are done; M2 is next. Catalog and version claims are subject to the checklist in [FEATURES.md](FEATURES.md#unverified-checklist).
 
 ## M0: Capability detection and target connection manager
+
+Status: **done.** Verified against MariaDB 10.6 and 11.4 and MySQL 8.0 and 8.4 (FEATURES.md V10).
 
 Scope
 - Config file loading with multiple targets (ADR 0008).
@@ -18,10 +20,17 @@ Exit criteria
 
 ## M1: Index hygiene and AUTO_INCREMENT headroom (first demoable value)
 
+Status: **done.** `modhak scan` (text and JSON) and `modhak serve` (findings page and JSON route). Notes on how the exit criteria were met:
+- Verified on docker compose servers (MariaDB 10.6/11.4, MySQL 8.0/8.4), **not yet on a real production replica**; run it against one before relying on it.
+- The default minimum uptime for unused-index verdicts is 7 days (`--min-uptime`).
+- Unused-index verdicts come from `performance_schema` only, and only while the table I/O instrument and `global_instrumentation` consumer are on. MariaDB `userstat` does not qualify: it lists only indexes that were read (FEATURES.md V12).
+- The server's own query log during a scan shows only SELECT, SHOW and the session-local `SET` statements.
+- The web UI has no auth (M4) and no history (M2): results are scanned on demand and cached briefly in memory.
+
 Scope
 - `internal/advisor`: duplicate, redundant, and unused index findings; AUTO_INCREMENT headroom finding.
 - Findings page (server-rendered), JSON output, and CLI `modhak scan`.
-- Unused-index verdicts include uptime and a caveat; no verdict below a configurable minimum uptime (default TBD).
+- Unused-index verdicts include uptime and a caveat; no verdict below a configurable minimum uptime (default 7 days).
 - Suggested DDL is text only (ADR 0007).
 
 Goal: point at a production replica and get real findings in one run.

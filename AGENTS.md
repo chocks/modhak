@@ -3,19 +3,20 @@
 Guidance for coding agents working in this repository.
 
 ## Project overview
-modhak is a planned advisor and dashboard for MariaDB (first-class) and MySQL. It snapshots a target database, stores history in Postgres, and produces findings (with evidence and suggested SQL) for a web UI, JSON API, and MCP. Current state: M0 code (config, target connections, capability detection, `modhak capabilities`) and M1 in progress (pure advisor, one-shot snapshot reader in `internal/collector`, `modhak scan` via `internal/scan`); see `docs/ROADMAP.md`. Read `docs/ARCHITECTURE.md`, `docs/FEATURES.md`, and `docs/decisions/` before changing anything.
+modhak is a planned advisor and dashboard for MariaDB (first-class) and MySQL. It snapshots a target database, stores history in Postgres, and produces findings (with evidence and suggested SQL) for a web UI, JSON API, and MCP. Current state: M0 and M1 are done (config, target connections, capability detection, pure advisor, one-shot snapshot reader, `modhak capabilities`, `modhak scan`, `modhak serve` findings page). No store, scheduled collector, auth, API or MCP yet; M2 (collector and Postgres store) is next. See `docs/ROADMAP.md`. Read `docs/ARCHITECTURE.md`, `docs/FEATURES.md`, and `docs/decisions/` before changing anything.
 
-## Layout (planned)
+## Layout (`store`, `api`, `mcp` and a scheduled `collector` are still planned)
 ```
 cmd/modhak/            entry point
 internal/config/       YAML config, targets
 internal/target/       per-target connections (read-only session, timeouts)
 internal/capability/   flavor/version/feature detection
-internal/collector/    scheduled snapshots, deltas
+internal/collector/    snapshots (one-shot so far), later scheduled + deltas
+internal/scan/         `modhak scan` pipeline, scan cache, text rendering
 internal/store/        Postgres history, audit log
 internal/advisor/      pure findings functions
 internal/web/          handlers, templates, static (go:embed)
-internal/auth/         Principal, roles, OIDC, tokens, CSRF
+internal/auth/         Principal (so far), later roles, OIDC, tokens, CSRF
 internal/api/          JSON API
 internal/mcp/          MCP tools
 docs/                  architecture, features, roadmap, risks, decisions (ADRs)
