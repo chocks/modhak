@@ -18,7 +18,7 @@ type UnusedEvidence struct {
 
 func (UnusedEvidence) evidenceKind() string { return KindUnusedIndex }
 
-const unusedCaveat = "Observed for %s days since the server started. Counters reset on restart and may reset on DDL; " +
+const unusedCaveat = "Observed for %s since the server started. Counters reset on restart and may reset on DDL; " +
 	"queries that run rarely (monthly reports, batch jobs) or only on other servers (primary vs replica) may not appear in this window."
 
 // UnusedIndexes reports non-unique, non-primary, visible indexes that show
@@ -64,7 +64,7 @@ func UnusedIndexes(in Input, cfg Config) ([]Finding, *Skipped) {
 		out = append(out, Finding{
 			ID: findingID(KindUnusedIndex, t), Kind: KindUnusedIndex, Severity: SeverityInfo, Target: t,
 			Evidence: UnusedEvidence{Source: in.Usage.Source, Reads: n, ObservedFor: in.Usage.Uptime, ObservedDays: round1(days),
-				Caveat: sprintfDays(unusedCaveat, days)},
+				Caveat: fmt.Sprintf(unusedCaveat, humanDuration(in.Usage.Uptime))},
 			SuggestedSQL: []string{dropIndexSQL(ix.Schema, ix.Table, ix.Name)},
 		})
 	}

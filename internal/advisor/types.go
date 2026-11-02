@@ -38,6 +38,11 @@ const (
 	reasonUptimeTooShort = "server uptime is below the minimum observation window"
 )
 
+// Kinds lists the finding kinds the advisor can produce, for filters.
+func Kinds() []string {
+	return []string{KindAutoIncHeadroom, KindDuplicateIndex, KindRedundantIndex, KindUnusedIndex}
+}
+
 // Target locates a finding. Index and Column are set when relevant.
 type Target struct {
 	Name   string `json:"name"`

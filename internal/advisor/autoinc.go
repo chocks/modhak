@@ -2,6 +2,7 @@ package advisor
 
 import (
 	"strings"
+	"time"
 )
 
 // AutoIncEvidence describes how much of an AUTO_INCREMENT column's range is
@@ -16,12 +17,17 @@ type AutoIncEvidence struct {
 	Remaining    uint64  `json:"remaining"`
 	// RoughDaysToOverflow assumes the average insert rate since table
 	// creation (CREATE_TIME) continues. It is a rough bound only: rates vary
-	// and deleted rows still consume values. Nil when it cannot be computed.
+	// and deleted rows still consume values. Nil when it cannot be computed
+	// or the table is younger than roughMinAge (the rate would mean nothing).
 	RoughDaysToOverflow *float64 `json:"rough_days_to_overflow,omitempty"`
 	Note                string   `json:"note,omitempty"`
 }
 
 func (AutoIncEvidence) evidenceKind() string { return KindAutoIncHeadroom }
+
+// roughMinAge is the youngest table for which a days-to-overflow estimate is
+// shown; on a younger table the average rate says nothing.
+const roughMinAge = 24 * time.Hour
 
 // intType holds the documented ranges (verified on MariaDB 10.6/11.4 and
 // MySQL 8.0/8.4; see FEATURES.md V11).
@@ -93,12 +99,10 @@ func AutoIncrementHeadroom(in Input, cfg Config) []Finding {
 		}
 		ev := AutoIncEvidence{ColumnType: a.ColumnType, Unsigned: unsigned, Next: a.Next, Max: max,
 			UsedFraction: float64(int(frac*10000+0.5)) / 10000, Remaining: remaining}
-		if !a.CreateTime.IsZero() && in.Now.After(a.CreateTime) && used > 0 {
+		if !a.CreateTime.IsZero() && in.Now.Sub(a.CreateTime) >= roughMinAge && used > 0 {
 			age := in.Now.Sub(a.CreateTime).Hours() / 24
-			if age > 0 {
-				d := float64(remaining) / (float64(used) / age)
-				ev.RoughDaysToOverflow = &d
-			}
+			d := float64(remaining) / (float64(used) / age)
+			ev.RoughDaysToOverflow = &d
 		}
 		t := Target{Name: in.Target, Schema: a.Schema, Table: a.Table, Column: a.Column}
 		f := Finding{ID: findingID(KindAutoIncHeadroom, t), Kind: KindAutoIncHeadroom, Severity: sev, Target: t}

@@ -1,0 +1,5 @@
+htmx.min.js
+  Project: htmx 2.0.4 (https://htmx.org), npm package htmx.org@2.0.4, file dist/htmx.min.js
+  License: Zero-Clause BSD (0BSD)
+  Verified: the npm tarball matched the registry's published sha512 integrity before extraction.
+  Update: replace the file, bump the version here, and re-check the integrity hash.

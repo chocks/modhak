@@ -31,8 +31,8 @@ func Text(results []TargetResult) string {
 		}
 		for _, f := range r.Findings {
 			b.WriteByte('\n')
-			fmt.Fprintf(&b, "[%s] %s  %s\n", f.Severity, f.Kind, location(f.Target))
-			for _, line := range describe(f) {
+			fmt.Fprintf(&b, "[%s] %s  %s\n", f.Severity, f.Kind, Location(f.Target))
+			for _, line := range Describe(f) {
 				fmt.Fprintf(&b, "    %s\n", line)
 			}
 			for _, q := range f.SuggestedSQL {
@@ -53,7 +53,8 @@ func plural(n int, one, many string) string {
 	return many
 }
 
-func location(t advisor.Target) string {
+// Location is schema.table[.index][.column].
+func Location(t advisor.Target) string {
 	s := t.Schema + "." + t.Table
 	if t.Index != "" {
 		s += "." + t.Index
@@ -82,7 +83,9 @@ func cols(cs []advisor.IndexColumn) string {
 	return "(" + strings.Join(parts, ", ") + ")"
 }
 
-func describe(f advisor.Finding) []string {
+// Describe returns plain-text lines for a finding, built from its structured
+// evidence. The terminal and web views share it so they say the same thing.
+func Describe(f advisor.Finding) []string {
 	switch ev := f.Evidence.(type) {
 	case advisor.DuplicateEvidence:
 		lines := []string{fmt.Sprintf("%s has the same columns %s as %s", ev.Duplicate, cols(ev.Columns), ev.Kept)}
@@ -94,14 +97,18 @@ func describe(f advisor.Finding) []string {
 		return []string{fmt.Sprintf("%s %s is a left prefix of %s %s", ev.Redundant, cols(ev.Columns), ev.CoveredBy, cols(ev.CoveringBy))}
 	case advisor.UnusedEvidence:
 		return []string{
-			fmt.Sprintf("0 reads in %.1f days (source: %s)", ev.ObservedDays, ev.Source),
+			fmt.Sprintf("0 reads (source: %s)", ev.Source),
 			ev.Caveat,
 		}
 	case advisor.AutoIncEvidence:
 		lines := []string{fmt.Sprintf("%s: next value %d of %d, %.1f%% of the range used, %d left",
 			ev.ColumnType, ev.Next, ev.Max, ev.UsedFraction*100, ev.Remaining)}
-		if ev.RoughDaysToOverflow != nil {
-			lines = append(lines, fmt.Sprintf("rough estimate: about %.0f days left at the average rate since table creation", *ev.RoughDaysToOverflow))
+		if d := ev.RoughDaysToOverflow; d != nil {
+			if *d < 1 {
+				lines = append(lines, "rough estimate: less than a day left at the average rate since table creation")
+			} else {
+				lines = append(lines, fmt.Sprintf("rough estimate: about %.0f days left at the average rate since table creation", *d))
+			}
 		}
 		if ev.Note != "" {
 			lines = append(lines, ev.Note)
@@ -109,4 +116,26 @@ func describe(f advisor.Finding) []string {
 		return lines
 	}
 	return nil
+}
+
+// Filter returns r with only the findings matching kind and severity; an empty
+// value matches everything. Skipped analyses and capabilities are kept.
+func Filter(r TargetResult, kind string, severity advisor.Severity) TargetResult {
+	out := r
+	out.Findings = []advisor.Finding{}
+	for _, f := range r.Findings {
+		if (kind == "" || f.Kind == kind) && (severity == "" || f.Severity == severity) {
+			out.Findings = append(out.Findings, f)
+		}
+	}
+	return out
+}
+
+// Counts returns the number of findings per severity.
+func Counts(r TargetResult) map[advisor.Severity]int {
+	m := map[advisor.Severity]int{}
+	for _, f := range r.Findings {
+		m[f.Severity]++
+	}
+	return m
 }

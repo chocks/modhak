@@ -1,0 +1,63 @@
+{{define "title"}}{{.Target}} findings · modhak{{end}}
+
+{{define "content"}}
+<nav class="crumbs"><a href="/">Targets</a> / {{.Target}}</nav>
+<h1>{{.Target}} <small><code>{{.Addr}}</code></small></h1>
+{{if not .Err}}
+<p class="meta">{{.Server}} · scanned {{.ScannedAt}} ({{.Ago}}) · <a href="{{.RefreshURL}}">Rescan</a> · <a href="{{.JSONURL}}">JSON</a></p>
+{{template "capabilities" .}}
+<form class="filters" method="get" action="{{.Path}}" hx-get="{{.Path}}" hx-trigger="change" hx-target="#findings" hx-swap="outerHTML" hx-push-url="true">
+  <label>Kind
+    <select name="kind">{{range .KindOptions}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+  </label>
+  <label>Severity
+    <select name="severity">{{range .SeverityOptions}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+  </label>
+  <noscript><button type="submit">Apply</button></noscript>
+</form>
+{{end}}
+{{template "findings-list" .}}
+{{end}}
+
+{{define "capabilities"}}
+<details class="caps">
+  <summary>Capabilities{{if .CapsAttention}} ({{.CapsAttention}} need attention){{end}}</summary>
+  <ul>
+  {{range .Caps}}
+    <li><span class="badge cap-{{.State}}">{{.State}}</span> <strong>{{.Name}}</strong>{{if .Hint}}<br><span class="hint">{{.Hint}}</span>{{end}}</li>
+  {{end}}
+  </ul>
+</details>
+{{end}}
+
+{{/* The fragment htmx swaps in for filter changes (HX-Request). The full page includes the same fragment. */}}
+{{define "findings-list"}}
+<section id="findings" aria-live="polite">
+{{if .Err}}
+  <div class="alert" role="alert"><span class="badge sev-critical">error</span> {{.Err}}</div>
+{{else}}
+  <p class="count">{{len .Findings}} {{if eq (len .Findings) 1}}finding{{else}}findings{{end}}{{if .Filtered}} (filtered from {{.Total}}){{end}}</p>
+  {{range .Findings}}
+  <article class="finding sev-{{.Severity}}" data-finding-id="{{.ID}}">
+    <header>
+      <span class="badge sev-{{.Severity}}">{{.Severity}}</span>
+      <span class="kind">{{.Kind}}</span>
+      <code>{{loc .Target}}</code>
+    </header>
+    {{range describe .}}<p>{{.}}</p>{{end}}
+    {{if .SuggestedSQL}}
+    <details>
+      <summary>Suggested SQL (modhak does not run it)</summary>
+      {{range .SuggestedSQL}}<pre><code>{{.}};</code></pre>{{end}}
+    </details>
+    {{end}}
+  </article>
+  {{else}}
+  <p class="empty">No findings{{if .Filtered}} match these filters{{end}}.</p>
+  {{end}}
+  {{range .Skipped}}
+  <div class="note"><strong>Skipped {{.Analysis}}:</strong> {{.Reason}}</div>
+  {{end}}
+{{end}}
+</section>
+{{end}}
