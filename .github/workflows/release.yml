@@ -1,0 +1,60 @@
+name: release
+
+# Push a tag like v0.1.0 to build binaries and publish a GitHub release:
+#   git tag v0.1.0 && git push origin v0.1.0
+# A tag with a suffix (v0.1.0-rc1) is published as a pre-release.
+# "Run workflow" (workflow_dispatch) does a dry run: it builds everything and
+# uploads the archives to the run, but publishes nothing.
+
+on:
+  push:
+    tags: ["v[0-9]*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: test
+        run: go test ./...
+      - name: build archives
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ "$REF_TYPE" = "tag" ]; then version="$REF_NAME"; else version="dev-${SHA::7}"; fi
+          scripts/release-build.sh "$version" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: modhak-release
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release and upload assets
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: modhak-release
+          path: dist
+      - name: create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          flags=""
+          case "$TAG" in *-*) flags="--prerelease" ;; esac
+          gh release create "$TAG" dist/* --verify-tag --generate-notes --title "$TAG" $flags
