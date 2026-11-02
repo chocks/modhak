@@ -38,3 +38,4 @@ go.work.sum
 *.db
 *.db-journal
 /configs/*.local.yaml
+/dist/

@@ -34,6 +34,26 @@ Early development. Rows marked planned are not implemented; the milestone is in 
 | Auth (OIDC, API tokens), JSON API, MCP, opt-in kill | planned (M4) |
 | Suggested indexes, EXPLAIN verification, schema lint | planned (M5) |
 
+## Install
+
+Download the archive for your platform from the [Releases page](https://github.com/chocks/modhak/releases): Linux and macOS (amd64, arm64) as `.tar.gz`, Windows (amd64) as `.zip`. Each contains the `modhak` binary (a single static file), the license, this README and an example config.
+
+```sh
+# Linux / macOS: verify, unpack, run
+sha256sum -c --ignore-missing SHA256SUMS        # macOS: shasum -a 256 -c --ignore-missing SHA256SUMS
+tar xzf modhak_v0.1.0_linux_amd64.tar.gz && cd modhak_v0.1.0_linux_amd64
+cp configs/modhak.example.yaml modhak.yaml      # edit: point targets at your MariaDB / MySQL
+./modhak capabilities --config modhak.yaml      # what each target supports
+./modhak scan --config modhak.yaml              # findings in the terminal
+./modhak serve --config modhak.yaml             # web UI on http://127.0.0.1:8080
+```
+
+Notes:
+- The example config points at the local dev containers (ports 33061 and 33062, user `modhak`). Edit `targets` for your own servers, and create a read-only user as in [Minimal GRANTs](#minimal-grants). No server to try it on? `make up` in a clone of this repo starts a MariaDB and a MySQL with that user and a small sample schema.
+- On macOS, binaries downloaded through a browser are quarantined because they are not signed: run `xattr -d com.apple.quarantine ./modhak` once. On Windows, SmartScreen may warn for the same reason.
+- `modhak version` prints the release it was built from. There is no auto-update; download the new release to upgrade.
+- Releases are built by [.github/workflows/release.yml](.github/workflows/release.yml). To build the same archives locally: `make dist VERSION=v0.1.0`.
+
 ## Quick start
 
 Implemented so far:

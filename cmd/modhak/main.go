@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"time"
 
 	"github.com/chocks/modhak/internal/advisor"
@@ -51,7 +52,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	}
 	switch args[0] {
 	case "version":
-		fmt.Fprintln(stdout, "modhak", version)
+		fmt.Fprintf(stdout, "modhak %s (%s %s/%s)\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 		return 0
 	case "serve":
 		return serveCmd(ctx, args[1:], stdout, stderr)

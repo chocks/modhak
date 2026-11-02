@@ -2,7 +2,7 @@
 GO ?= go
 CONFIG ?= configs/modhak.local.yaml
 
-.PHONY: build test vet fmt check run serve up down reset logs
+.PHONY: build test vet fmt check run serve dist up down reset logs
 
 build:
 	CGO_ENABLED=0 $(GO) build -o bin/modhak ./cmd/modhak
@@ -21,6 +21,12 @@ check: fmt vet test
 # make run ARGS="capabilities --config configs/modhak.local.yaml"
 run:
 	$(GO) run ./cmd/modhak $(ARGS)
+
+# Build release archives for all platforms into dist/ (same script CI uses).
+# make dist VERSION=v0.1.0
+VERSION ?= dev
+dist:
+	scripts/release-build.sh $(VERSION) dist
 
 # Web UI on http://127.0.0.1:8080 (no auth yet: loopback only).
 serve:
