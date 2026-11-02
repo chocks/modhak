@@ -182,7 +182,7 @@ func TestUnusedIndexes(t *testing.T) {
 				if ev.Source != SourcePerfSchema || ev.Reads != 0 || ev.ObservedDays <= 0 {
 					t.Errorf("bad evidence %+v", ev)
 				}
-				if !strings.Contains(ev.Caveat, "Observed for") || !strings.Contains(ev.Caveat, "days") {
+				if !strings.Contains(ev.Caveat, "Observed for") || !strings.Contains(ev.Caveat, "since the server started") {
 					t.Errorf("caveat missing observation window: %q", ev.Caveat)
 				}
 				if len(f.SuggestedSQL) != 1 {
@@ -349,5 +349,49 @@ func TestUnusedIndexesNoteForIndexesWithoutCounters(t *testing.T) {
 				t.Fatalf("note = %+v, want containing %q", sk, tt.wantNote)
 			}
 		})
+	}
+}
+
+func TestRoughDaysOnlyForTablesOldEnough(t *testing.T) {
+	mk := func(age time.Duration) AutoIncrement {
+		return AutoIncrement{Schema: "s", Table: "t", Column: "id", ColumnType: "int unsigned", Next: 3000000001, CreateTime: now.Add(-age)}
+	}
+	tests := []struct {
+		name string
+		age  time.Duration
+		want bool
+	}{
+		{"table created minutes ago", 5 * time.Minute, false},
+		{"just under a day", 24*time.Hour - time.Second, false},
+		{"exactly a day", 24 * time.Hour, true},
+		{"old table", 400 * 24 * time.Hour, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fs := AutoIncrementHeadroom(Input{Target: "srv", Now: now, AutoIncrements: []AutoIncrement{mk(tt.age)}}, Config{})
+			if len(fs) != 1 {
+				t.Fatalf("want 1 finding, got %d", len(fs))
+			}
+			if got := fs[0].Evidence.(AutoIncEvidence).RoughDaysToOverflow != nil; got != tt.want {
+				t.Fatalf("rough days present = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHumanDuration(t *testing.T) {
+	tests := []struct {
+		d    time.Duration
+		want string
+	}{
+		{0, "less than a minute"}, {59 * time.Second, "less than a minute"}, {time.Minute, "1 minute"},
+		{90 * time.Second, "1 minute"}, {5 * time.Minute, "5 minutes"}, {119 * time.Minute, "119 minutes"},
+		{2 * time.Hour, "2.0 hours"}, {5*time.Hour + 30*time.Minute, "5.5 hours"}, {47 * time.Hour, "47.0 hours"},
+		{48 * time.Hour, "2.0 days"}, {30 * 24 * time.Hour, "30.0 days"},
+	}
+	for _, tt := range tests {
+		if got := humanDuration(tt.d); got != tt.want {
+			t.Errorf("humanDuration(%s) = %q, want %q", tt.d, got, tt.want)
+		}
 	}
 }

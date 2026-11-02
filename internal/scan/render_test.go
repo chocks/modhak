@@ -52,7 +52,7 @@ func TestText(t *testing.T) {
 		"idx_email_dup has the same columns (email(10)) as idx_email",
 		"idx_c (c) is a left prefix of idx_cs (c, s DESC)",
 		"[info] unused_index  shop.orders.idx_z",
-		"0 reads in 30.0 days (source: performance_schema)",
+		"0 reads (source: performance_schema)", "Observed for 30.0 days since the server started.",
 		"== clean (db2:3306)  mysql 8.4.13",
 		"no findings",
 		"skipped unused_index_analysis: Enable performance_schema",
@@ -101,5 +101,21 @@ func TestJSON(t *testing.T) {
 	}
 	if back[1]["skipped"] == nil {
 		t.Error("skipped missing")
+	}
+}
+
+func TestRoughEstimateWording(t *testing.T) {
+	mk := func(days float64) []TargetResult {
+		r := sample()
+		ev := r[0].Findings[0].Evidence.(advisor.AutoIncEvidence)
+		ev.RoughDaysToOverflow = &days
+		r[0].Findings[0].Evidence = ev
+		return r[:1]
+	}
+	if out := Text(mk(0.4)); !strings.Contains(out, "less than a day left") {
+		t.Errorf("sub-day estimate should say less than a day:\n%s", out)
+	}
+	if out := Text(mk(12)); !strings.Contains(out, "about 12 days left") {
+		t.Errorf("estimate wording:\n%s", out)
 	}
 }

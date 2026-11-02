@@ -4,10 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 func writeConfig(t *testing.T, body string) string {
@@ -170,4 +176,119 @@ func TestScanLive(t *testing.T) {
 			t.Errorf("no unused_index finding and no note explaining why; kinds = %v", kinds)
 		}
 	})
+}
+
+// lockedBuffer is a bytes.Buffer safe for use while serve is running.
+type lockedBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (l *lockedBuffer) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+func (l *lockedBuffer) String() string { l.mu.Lock(); defer l.mu.Unlock(); return l.b.String() }
+
+func TestServeFlagValidation(t *testing.T) {
+	cfg := writeConfig(t, "targets:\n  - {name: a, host: 127.0.0.1, port: 1, user: u}\n")
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"missing config", []string{"serve", "--config", "/nonexistent.yaml"}, "open config"},
+		{"zero ttl", []string{"serve", "--config", cfg, "--cache-ttl", "0s"}, "cache-ttl"},
+		{"bad thresholds", []string{"serve", "--config", cfg, "--headroom-warn", "0.9", "--headroom-critical", "0.5"}, "headroom-warn"},
+		{"bad flag", []string{"serve", "--nope"}, "flag provided but not defined"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var out, errb bytes.Buffer
+			if code := run(context.Background(), tt.args, &out, &errb); code != 2 || !strings.Contains(errb.String(), tt.want) {
+				t.Fatalf("code %d, stderr %q, want 2 containing %q", code, errb.String(), tt.want)
+			}
+		})
+	}
+	t.Run("address in use", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ln.Close()
+		var out, errb bytes.Buffer
+		if code := run(context.Background(), []string{"serve", "--config", cfg, "--listen", ln.Addr().String()}, &out, &errb); code != 1 {
+			t.Fatalf("code %d, stderr %q", code, errb.String())
+		}
+	})
+}
+
+func TestServeStartsServesAndShutsDown(t *testing.T) {
+	// A closed port: the pages must still render, showing the target's error.
+	cfg := writeConfig(t, "targets:\n  - {name: down1, host: 127.0.0.1, port: 1, user: u, connect_timeout: 1s}\n")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	out, errb := &lockedBuffer{}, &lockedBuffer{}
+	done := make(chan int, 1)
+	go func() { done <- run(ctx, []string{"serve", "--config", cfg, "--listen", "127.0.0.1:0"}, out, errb) }()
+
+	var base string
+	for i := 0; i < 100 && base == ""; i++ {
+		if m := regexp.MustCompile(`listening on (http://\S+)`).FindStringSubmatch(out.String()); m != nil {
+			base = m[1]
+		} else {
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+	if base == "" {
+		t.Fatalf("server did not report its address; stderr: %s", errb.String())
+	}
+	get := func(path string) (int, string) {
+		resp, err := http.Get(base + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(b)
+	}
+	if code, body := get("/healthz"); code != 200 || !strings.Contains(body, "ok") {
+		t.Errorf("healthz = %d %q", code, body)
+	}
+	if code, body := get("/"); code != 200 || !strings.Contains(body, "down1") || !strings.Contains(body, "cannot connect") {
+		t.Errorf("overview = %d\n%s", code, body)
+	}
+	if code, body := get("/t/down1/findings"); code != 200 || !strings.Contains(body, "cannot connect") {
+		t.Errorf("findings = %d\n%s", code, body)
+	}
+	if strings.Contains(errb.String(), "non-loopback") {
+		t.Error("loopback bind should not warn")
+	}
+
+	cancel()
+	select {
+	case code := <-done:
+		if code != 0 {
+			t.Fatalf("exit code %d, stderr %s", code, errb.String())
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("serve did not shut down after cancel")
+	}
+}
+
+func TestServeWarnsOnNonLoopback(t *testing.T) {
+	cfg := writeConfig(t, "targets:\n  - {name: a, host: 127.0.0.1, port: 1, user: u}\n")
+	ctx, cancel := context.WithCancel(context.Background())
+	out, errb := &lockedBuffer{}, &lockedBuffer{}
+	done := make(chan int, 1)
+	go func() { done <- run(ctx, []string{"serve", "--config", cfg, "--listen", "0.0.0.0:0"}, out, errb) }()
+	for i := 0; i < 100 && !strings.Contains(out.String(), "listening on"); i++ {
+		time.Sleep(20 * time.Millisecond)
+	}
+	cancel()
+	<-done
+	if !strings.Contains(errb.String(), "non-loopback") {
+		t.Errorf("expected a warning about binding with auth off, stderr: %s", errb.String())
+	}
 }

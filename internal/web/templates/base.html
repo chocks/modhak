@@ -1,0 +1,22 @@
+{{define "base"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="htmx-config" content='{"allowEval":false,"includeIndicatorStyles":false}'>
+<title>{{template "title" .}}</title>
+<link rel="stylesheet" href="/static/modhak.css">
+<script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">modhak</a>
+  <span class="who" title="Auth is off; every request is this implicit principal">{{.Principal.Name}} ({{.Principal.Role}})</span>
+</header>
+<main>
+{{template "content" .}}
+</main>
+<footer>modhak only suggests SQL; it never runs it. Findings come from a read-only scan and can be wrong: check the evidence and caveats first.</footer>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,57 @@
+:root {
+  --bg: #fafafa; --fg: #1b1f24; --muted: #5a6572; --card: #ffffff; --border: #d8dee4;
+  --crit: #b3261e; --crit-bg: #fde7e5; --warn: #8a5300; --warn-bg: #fff1d6;
+  --info: #0b5cad; --info-bg: #e3f0fd; --ok: #1a6b36; --ok-bg: #e0f4e6; --link: #0b5cad;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14181d; --fg: #e6e9ed; --muted: #9aa5b1; --card: #1c2229; --border: #313a44;
+    --crit: #ff8a80; --crit-bg: #3a1d1b; --warn: #ffc56b; --warn-bg: #3a2c12;
+    --info: #7fb8f5; --info-bg: #14283c; --ok: #7fd49a; --ok-bg: #15301e; --link: #7fb8f5;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--link); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+.top { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); background: var(--card); }
+.brand { font-weight: 700; text-decoration: none; color: var(--fg); letter-spacing: 0.02em; }
+.who { color: var(--muted); font-size: 0.85rem; }
+main { max-width: 64rem; margin: 0 auto; padding: 1rem; }
+footer { max-width: 64rem; margin: 2rem auto; padding: 0 1rem; color: var(--muted); font-size: 0.85rem; }
+h1 { margin: 0.5rem 0; font-size: 1.5rem; }
+h1 small { font-size: 0.9rem; color: var(--muted); font-weight: 400; }
+.crumbs, .meta { color: var(--muted); font-size: 0.9rem; margin: 0.25rem 0; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: var(--card); border: 1px solid var(--border); }
+th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th.num, td.num { text-align: right; }
+.badge { display: inline-block; padding: 0 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; border: 1px solid currentColor; }
+.sev-critical.badge { color: var(--crit); background: var(--crit-bg); }
+.sev-warning.badge { color: var(--warn); background: var(--warn-bg); }
+.sev-info.badge { color: var(--info); background: var(--info-bg); }
+.badge.ok, .cap-available { color: var(--ok); background: var(--ok-bg); }
+.cap-degraded { color: var(--warn); background: var(--warn-bg); }
+.cap-unavailable { color: var(--crit); background: var(--crit-bg); }
+.filters { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
+.filters label { display: flex; flex-direction: column; font-size: 0.85rem; color: var(--muted); gap: 0.15rem; }
+select, button { font: inherit; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--fg); }
+.count { color: var(--muted); }
+.finding { background: var(--card); border: 1px solid var(--border); border-left-width: 5px; border-radius: 6px; padding: 0.75rem 1rem; margin: 0.75rem 0; }
+.finding.sev-critical { border-left-color: var(--crit); }
+.finding.sev-warning { border-left-color: var(--warn); }
+.finding.sev-info { border-left-color: var(--info); }
+.finding header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+.kind { font-weight: 600; }
+.finding p { margin: 0.35rem 0; overflow-wrap: anywhere; }
+details { margin: 0.5rem 0; }
+summary { cursor: pointer; color: var(--muted); }
+pre { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.75rem; overflow-x: auto; margin: 0.5rem 0; }
+.caps ul { list-style: none; padding-left: 0; }
+.caps li { margin: 0.4rem 0; }
+.hint { color: var(--muted); font-size: 0.9rem; }
+.note, .alert { background: var(--warn-bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.9rem; margin: 0.75rem 0; overflow-wrap: anywhere; }
+.alert { background: var(--crit-bg); }
+.empty { color: var(--muted); }
+.htmx-request { opacity: 0.6; }
+@media (max-width: 40rem) { main { padding: 0.75rem; } th, td { padding: 0.4rem 0.5rem; } }

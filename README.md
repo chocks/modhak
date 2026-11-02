@@ -26,8 +26,8 @@ Early development. Rows marked planned are not implemented; the milestone is in 
 | Area | Status |
 |---|---|
 | Capability detection (flavor, version, performance_schema, userstat, sys) | implemented (M0): `modhak capabilities` |
-| Duplicate / redundant / unused index findings with DDL | CLI done (M1): `modhak scan`; findings page next |
-| AUTO_INCREMENT headroom | CLI done (M1): `modhak scan` |
+| Duplicate / redundant / unused index findings with DDL | implemented (M1): `modhak scan`, web findings page |
+| AUTO_INCREMENT headroom | implemented (M1): `modhak scan`, web findings page |
 | `modhak scan` CLI with JSON output | implemented (M1) |
 | Query digests with history and deltas | planned (M2) |
 | Live queries, space growth, health, replication | planned (M3) |
@@ -41,15 +41,17 @@ Implemented so far:
 ```sh
 modhak capabilities --config configs/modhak.local.yaml [--target NAME] [--json]
 modhak scan --config configs/modhak.local.yaml [--target NAME] [--json] [--min-uptime 168h]
+modhak serve --config configs/modhak.local.yaml [--listen 127.0.0.1:8080] [--cache-ttl 1m]   # or: make serve
 ```
 
 `scan` prints duplicate, redundant and unused index findings and AUTO_INCREMENT headroom for each target, with evidence and suggested SQL that modhak never runs. It exits 1 if any target could not be scanned and 0 otherwise, even when it finds problems. Unused-index verdicts need `performance_schema` (userstat alone is not enough) and a server uptime of at least `--min-uptime` (default 7 days; `0` turns the minimum off); otherwise `scan` says why it skipped them.
 
-Planned:
+`serve` runs a small web UI over the same findings: a targets overview at `/`, and `/t/NAME/findings` per target with kind and severity filters (htmx; it also works without JavaScript). `/t/NAME/findings.json` returns the same JSON as `scan --json` for that target. Pages show each target's capabilities with the "enable X to get Y" hints, the evidence and caveats for each finding, and the suggested SQL, which modhak never runs.
 
-```sh
-modhak serve --config modhak.yaml         # web UI + collector
-```
+Things to know about `serve` in this milestone:
+- **There is no authentication yet** (M4). It binds to `127.0.0.1` by default and warns if you bind elsewhere. Do not expose it: anyone who can reach it can read findings and schema names. Every request is treated as an implicit read-only `viewer`.
+- **There is no history store yet** (M2). Each target is scanned on demand and the result is cached in memory for `--cache-ttl` (default 1 minute) so page views do not hit your database every time. "Rescan" forces a new scan, at most once every 10 seconds per target.
+- The UI and its htmx script are embedded in the binary; it loads nothing from the internet, and the content security policy allows only its own origin.
 
 ## Minimal GRANTs
 

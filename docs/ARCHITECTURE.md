@@ -90,6 +90,7 @@ Routes (planned; all GET unless noted)
 |---|---|---|
 | `/` | Targets overview | M0/M1 |
 | `/t/{target}/findings` | Findings list, filter by kind/severity | M1 |
+| `/t/{target}/findings.json` | Same JSON as `modhak scan --json` for one target, same filters | M1 |
 | `/t/{target}/queries` | Digest deltas, charts | M2 |
 | `/t/{target}/live` | Live queries; `POST .../kill` (opt-in) | M3/M4 |
 | `/t/{target}/space` | Size and growth | M3 |
@@ -137,7 +138,7 @@ Also (TBD): `schema_migrations`, `api_tokens` (hashed), and `capability_snapshot
 1. Is the `Principal` an argument to advisor functions, or is authorization enforced only at the consumer? Decision 5 says all consumers take one; the advisor signature is undecided. Leaning: consumers filter by target access; advisor stays pure.
 2. Which parser: Vitess or TiDB? Evaluate MariaDB-syntax coverage, binary size, and API stability before M5.
 3. MCP transport (stdio, streamable HTTP, both) and which SDK. TBD.
-4. Default behavior when auth is off: which role does the implicit Principal have, and is kill allowed if enabled in config?
+4. Default behavior when auth is off: which role does the implicit Principal have, and is kill allowed if enabled in config? M1 uses an implicit `viewer` (there are no mutating actions yet); the kill question is still open for M4.
 5. Minimum uptime default for unused-index verdicts. M1 uses 7 days, configurable (`advisor.Config.MinUptime`); revisit with real data.
 6. Supported version matrix (lowest MariaDB and MySQL versions). TBD until the FEATURES.md checklist is run.
 7. Whether `modhak scan` should be able to write to the store, or stay stateless.
