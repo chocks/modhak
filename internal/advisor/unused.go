@@ -1,6 +1,9 @@
 package advisor
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // UnusedEvidence carries the observation window and the caveats that must
 // accompany every unused-index verdict (ADR 0007).
@@ -20,7 +23,10 @@ const unusedCaveat = "Observed for %s days since the server started. Counters re
 
 // UnusedIndexes reports non-unique, non-primary, visible indexes that show
 // zero reads. It returns no findings, and a reason, when usage data is
-// missing or the observation window is shorter than cfg.MinUptime.
+// missing or the observation window is shorter than cfg.MinUptime. When
+// findings are returned it can still return a note for indexes that have no
+// counter row (MySQL has none for a table not opened since startup, V12):
+// those are unknown, not unused.
 func UnusedIndexes(in Input, cfg Config) ([]Finding, *Skipped) {
 	cfg = cfg.withDefaults()
 	if in.Usage == nil {
@@ -39,13 +45,18 @@ func UnusedIndexes(in Input, cfg Config) ([]Finding, *Skipped) {
 		reads[[3]string{e.Schema, e.Table, e.Index}] += e.Reads
 	}
 	var out []Finding
+	unknown := 0
 	for _, ix := range in.Indexes {
 		if ix.Unique || ix.Primary() || ix.Ignored {
 			continue
 		}
 		n, seen := reads[[3]string{ix.Schema, ix.Table, ix.Name}]
 		// An index with no counter row is unknown, not unused.
-		if !seen || n != 0 {
+		if !seen {
+			unknown++
+			continue
+		}
+		if n != 0 {
 			continue
 		}
 		t := Target{Name: in.Target, Schema: ix.Schema, Table: ix.Table, Index: ix.Name}
@@ -57,5 +68,18 @@ func UnusedIndexes(in Input, cfg Config) ([]Finding, *Skipped) {
 			SuggestedSQL: []string{dropIndexSQL(ix.Schema, ix.Table, ix.Name)},
 		})
 	}
-	return out, nil
+	var note *Skipped
+	if unknown > 0 {
+		note = &Skipped{Analysis: SkipUnusedIndexes, Reason: fmt.Sprintf(
+			"%d %s no usage counters yet (the table has not been accessed since the server started), so no verdict is given for %s",
+			unknown, pluralize(unknown, "index has", "indexes have"), pluralize(unknown, "it", "them"))}
+	}
+	return out, note
+}
+
+func pluralize(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
 }
