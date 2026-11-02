@@ -2,13 +2,13 @@
 
 An index and schema advisor with a dashboard for MariaDB (first-class) and MySQL (supported). Inspired by [PgHero](https://github.com/ankane/pghero).
 
-> **Status: planning.** No code exists yet. Everything below describes the intended design. Sections marked *planned* or *not yet implemented* are not available.
+> **Status: early development.** Capability detection (`modhak capabilities`) and index/AUTO_INCREMENT scanning (`modhak scan`) work against MariaDB and MySQL. The web UI, history store, JSON API and MCP are *planned*; sections marked planned are not available yet.
 
 *Name:* a modak is a steamed dumpling ("modak" is the common spelling; "modhak" is this project's spelling). It is a sibling to my existing tool, dumpling.
 
 ## Why
 
-MariaDB and MySQL lack a simple, free, self-hosted tool that tells you what to fix: duplicate and unused indexes, missing indexes, AUTO_INCREMENT headroom. modhak collects snapshots from a target database, keeps history in SQLite, and produces actionable findings (with evidence and suggested SQL) in a web UI, a JSON API, and MCP so AI agents can act on them.
+MariaDB and MySQL lack a simple, free, self-hosted tool that tells you what to fix: duplicate and unused indexes, missing indexes, AUTO_INCREMENT headroom. modhak collects snapshots from a target database, keeps history in Postgres (planned), and produces actionable findings (with evidence and suggested SQL) in a web UI, a JSON API, and MCP so AI agents can act on them.
 
 ## Positioning vs Datadog DBM
 
@@ -53,40 +53,37 @@ modhak serve --config modhak.yaml         # web UI + collector
 
 ## Minimal GRANTs
 
-**Proposed and UNVERIFIED** except where noted; see the per-feature table and checklist in [docs/FEATURES.md](docs/FEATURES.md#4-minimal-grants-per-feature). Use a dedicated read-only user, ideally on a replica.
+Use a dedicated read-only user, ideally on a replica.
+
+**Verified** (capability detection and `modhak scan`, on MariaDB 10.6 and 11.4 and MySQL 8.0 and 8.4):
 
 ```sql
--- Proposal, to be tested against real MariaDB and MySQL instances.
 CREATE USER 'modhak'@'%' IDENTIFIED BY '...';
-GRANT SELECT ON performance_schema.* TO 'modhak'@'%';   -- digests, index I/O
-GRANT PROCESS ON *.* TO 'modhak'@'%';                   -- see all threads
--- Replication status (MariaDB, per docs): REPLICATION SLAVE ADMIN (10.5.2+) or REPLICA MONITOR (10.5.9+).
--- Replication status (MySQL): UNVERIFIED.
--- Index/column metadata for your schemas: SELECT on those schemas (UNVERIFIED if needed).
--- EXPLAIN (M5): SELECT on the tables being explained.
--- Kill-query (opt-in, separate user recommended): privilege UNVERIFIED.
+GRANT SELECT, PROCESS ON *.* TO 'modhak'@'%';
 ```
 
-modhak never needs write privileges and never runs DDL.
+Narrower grants (for example `SELECT` on `performance_schema` and on your schemas only) are **UNVERIFIED**: see the per-feature table and checklist in [docs/FEATURES.md](docs/FEATURES.md#4-minimal-grants-per-feature). Grants for later features are also unverified: replication status (MariaDB: `REPLICATION SLAVE ADMIN` 10.5.2+ or `REPLICA MONITOR` 10.5.9+, per docs; MySQL: unverified), EXPLAIN (M5) and opt-in kill-query.
+
+modhak never needs write privileges and never runs DDL. It sends only `SELECT` and `SHOW`, plus two session-local `SET` statements (a read-only transaction, and on MySQL turning off the `information_schema` statistics cache so `AUTO_INCREMENT` is current).
 
 ## Supported versions
 
 | Server | Version | Status |
 |---|---|---|
-| MariaDB | TBD | first-class target |
-| MySQL | TBD | supported |
+| MariaDB | tested: 10.6, 11.4 | first-class target |
+| MySQL | tested: 8.0, 8.4 | supported |
 
-The lowest supported versions will be set after the verification checklist in [docs/FEATURES.md](docs/FEATURES.md#unverified-checklist) is run. Facts known so far: MariaDB `sys` schema starts at 10.6.0; `SHOW REPLICA STATUS` exists in MariaDB from 10.5.1.
+"Tested" means the integration tests and `modhak scan` were run against those versions (docker compose and CI cover 11.4 and 8.4; 10.6 and 8.0 are in the `matrix` profile). The lowest supported versions are TBD until the verification checklist in [docs/FEATURES.md](docs/FEATURES.md#unverified-checklist) is finished. Forks and managed services (Percona, RDS, Aurora, Cloud SQL) are untested.
 
 ## Configuration
 
-Planned shape (not final, not implemented):
+Today only `targets` is read. The other keys below are the planned shape (not final, not implemented).
 
 ```yaml
-listen: 127.0.0.1:8080
-store:
-  path: ./modhak.db
-auth:
+listen: 127.0.0.1:8080      # planned
+store:                      # planned: Postgres history store (ADR 0009); `scan` needs none
+  url_env: MODHAK_STORE_URL
+auth:                       # planned
   enabled: false            # off by default
 targets:
   - name: prod-replica-1
@@ -99,9 +96,11 @@ targets:
     host: staging-db
     user: modhak
     password_env: MODHAK_PASSWORD
-features:
+features:                   # planned
   kill_query: false         # opt-in; needs operator role and a privileged user
 ```
+
+An example that works today is [configs/modhak.example.yaml](configs/modhak.example.yaml).
 
 ## Local development
 
@@ -113,16 +112,18 @@ make check                   # gofmt, vet, tests
 make build                   # bin/modhak
 docker compose --profile bare up -d --wait     # servers with performance_schema off (:33063, :33064)
 docker compose --profile matrix up -d --wait   # MariaDB 10.6 (:33065), MySQL 8.0 (:33066)
-make run ARGS="capabilities --config configs/modhak.local.yaml"
-MODHAK_TEST_ADDR=127.0.0.1:33061 go test ./internal/target -v   # live-server test, skipped otherwise
+make run ARGS="scan --config configs/modhak.local.yaml"    # or: capabilities
+MODHAK_TEST_ADDR=127.0.0.1:33061 go test ./...             # also run the live-server tests (use :33062 for MySQL)
 make down                    # stop everything; `make reset` also drops data
 ```
+
+CI (`.github/workflows/ci.yml`) runs gofmt, vet, tests and build, then the live-server tests against the compose MariaDB and MySQL. The `app` profile (`docker compose --profile app up --build`) runs modhak itself in a container. Postgres for the history store (ADR 0009) joins the compose file when M2 starts.
 
 `make up` copies `configs/modhak.example.yaml` to the git-ignored `configs/modhak.local.yaml`. Dev credentials (`modhak`/`modhak`, root `root`) are for local containers only.
 
 ## Roadmap
 
-M0 capability detection and connections; M1 index hygiene and AUTO_INCREMENT headroom with `modhak scan`; M2 collector, store, queries page; M3 live queries, space, health, replication; M4 auth, API tokens, JSON API, MCP; M5 suggested indexes, explain verification, schema lint. Later: Datadog events export, OIDC polish, standalone collector agent. Scope and exit criteria: [docs/ROADMAP.md](docs/ROADMAP.md).
+M0 capability detection and connections (done); M1 index hygiene and AUTO_INCREMENT headroom with `modhak scan` (CLI done, findings page next); M2 collector, Postgres store, queries page; M3 live queries, space, health, replication; M4 auth, API tokens, JSON API, MCP; M5 suggested indexes, explain verification, schema lint. Later: Datadog events export, OIDC polish, standalone collector agent. Scope and exit criteria: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Docs
 

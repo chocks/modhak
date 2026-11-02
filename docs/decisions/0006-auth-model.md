@@ -14,4 +14,4 @@ Many users run modhak on an internal network and want zero setup. Others need ac
 - Running with auth off on an untrusted network is the operator's risk; the docs must say so, and the default listen address should be loopback (TBD).
 - Roles are coarse (two roles); finer permissions are out of scope for now.
 - Token hashing, scoping, and session details are TBD.
-- The audit log lives in the store, so it is lost if the SQLite file is lost; export is a Later item.
+- The audit log lives in the store, so it is lost if the store is lost; export is a Later item.
